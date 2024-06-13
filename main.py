@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Response, status, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from random import randint
@@ -33,7 +33,7 @@ def home():
 def get_post():
     return {"data" : ls}
 
-@app.post('/posts')
+@app.post('/posts', status_code=status.HTTP_201_CREATED)
 def post(post: Post):
     print(f"name : {post.name} \ndetails : {post.details} \nage: {post.age} \nrating : {post.rating}")
     post_dict = post.dict()
@@ -43,20 +43,32 @@ def post(post: Post):
     return{"data":post_dict}
 
 @app.get('/posts/{id}')
-def get_post_id(id : int):
+def get_post_id(id : int, response : Response):
     result = search(id)
+    if not result:
+        raise HTTPException(status_code = status.HTTP_404_NOT_FOUND,
+                            detail = f"post with id: {id} was not found")
+        # response.status_code = status.HTTP_404_NOT_FOUND
+        # return{'message' : f"{id} was not found"}
     return {"data" : result}
 
-@app.delete("/posts/{id}")
+@app.delete("/posts/{id}", status_code = status.HTTP_204_NO_CONTENT)
 def delete_post(id : int):
     location = index_loc(id)
     print(location)
+    if location == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                             detail = f"post with id: {id} does not exist")
     ls.pop(location)
-    return {"message" : "the data is deleted" }
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 @app.put("/posts/{id}")
 def update_post(id : int,update_post : Post):
     loc = index_loc(id)
+    if loc == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                             detail = f"post with id: {id} does not exist")
+
     upd_data = update_post.dict()
     upd_data["id"] = id
     ls[loc] = upd_data
